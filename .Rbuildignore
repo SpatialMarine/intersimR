@@ -1,0 +1,11 @@
+^intersimR\.Rproj$
+^\.Rproj\.user$
+^README\.Rmd$
+^README-.*\.png$
+^docs$
+^pkgdown$
+^\.github$
+^data-raw$
+^inst/doc$
+^vignettes/.*\.(html|pdf)$
+^rsconnect$

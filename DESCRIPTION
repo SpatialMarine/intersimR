@@ -1,0 +1,19 @@
+Package: intersimR
+Title: Simulation-Based Framework to Detect Animal–Vessel Interactions
+Version: 0.0.0.9000
+Authors@R: 
+    person("David", "March", 
+           email = "david.march@uv.es",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-6118-761X"))
+Description: Provides tools to detect and quantify local interaction events 
+    between marine animals and vessels from tracking data. The package 
+    implements simulation-based null models to identify attraction and 
+    following behaviours derived from the methods described 
+    in 'A simulation-based framework to detect marine animal–vessel interactions 
+    using tracking data'. Functions support event detection, simulation workflows, 
+    statistical testing, and reproducible application to new datasets.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
