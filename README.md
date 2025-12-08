@@ -1,5 +1,10 @@
 # intersimR
 
+<!-- badges: start -->
+[![R-CMD-check](https://github.com/SpatialMarine/intersimR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/SpatialMarine/intersimR/actions)
+[![pkgdown](https://github.com/SpatialMarine/intersimR/actions/workflows/pkgdown.yaml/badge.svg)](https://SpatialMarine.github.io/intersimR/)
+<!-- badges: end -->
+
 `intersimR` provides tools to detect and quantify local interaction events 
 between marine animals and vessels using tracking data. The package implements 
 the simulation-based framework described in *A simulation-based framework to 
