@@ -2,7 +2,7 @@ pandoc: 3.1.11
 pkgdown: 2.2.0
 pkgdown_sha: ~
 articles: {}
-last_built: 2025-12-08T00:27Z
+last_built: 2025-12-08T01:04Z
 urls:
   reference: https://spatialmarine.github.io/intersimR/reference
   article: https://spatialmarine.github.io/intersimR/articles
