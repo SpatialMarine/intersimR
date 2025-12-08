@@ -69,5 +69,10 @@ If you use `intersimR` in your research, please cite the methodological
 paper associated with this framework once it is published. A `CITATION`
 file will be added when a formal reference is available.
 
-# 
+# Package index
+
+## All functions
+
+- [`hello_intersimR()`](https://spatialmarine.github.io/intersimR/reference/hello_intersimR.md)
+  : Hello from intersimR
 

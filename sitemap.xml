@@ -1,8 +1,11 @@
 <urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
 <url><loc>https://spatialmarine.github.io/intersimR/404.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/LICENSE-text.html</loc></url>
+<url><loc>https://spatialmarine.github.io/intersimR/LICENSE.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/authors.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/index.html</loc></url>
+<url><loc>https://spatialmarine.github.io/intersimR/reference/hello_intersimR.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/index.html</loc></url>
+<url><loc>https://spatialmarine.github.io/intersimR/reference/intersimR-package.html</loc></url>
 </urlset>
 
