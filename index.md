@@ -3,7 +3,7 @@
 `intersimR` provides tools to detect and quantify local interaction
 events between marine animals and vessels using tracking data. The
 package implements the simulation-based framework described in *A
-simulation-based framework to detect marine animal–vessel interactions
+simulation-based framework to detect marine animal-vessel interactions
 using tracking data*, allowing users to evaluate attraction and
 following behaviour through null-model simulations and event-level
 metrics.
