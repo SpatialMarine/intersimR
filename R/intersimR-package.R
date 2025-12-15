@@ -1,5 +1,3 @@
-# R/intersimR-package.R
-
 #' intersimR: Simulation-based detection of animal–vessel interaction events
 #'
 #' Tools to detect and quantify local interaction events from animal and vessel
@@ -7,3 +5,10 @@
 #'
 #' @keywords internal
 "_PACKAGE"
+
+## usethis namespace: start
+#' @import data.table
+#' @importFrom geosphere distGeo
+#' @importFrom tibble as_tibble tibble
+## usethis namespace: end
+NULL

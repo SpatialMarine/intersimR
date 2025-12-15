@@ -11,3 +11,4 @@
 ^rsconnect$
 ^_pkgdown\.yml$
 ^LICENSE\.md$
+^dev$

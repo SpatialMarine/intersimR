@@ -1,5 +1,3 @@
-# R/as-track.R
-
 #' Coerce inputs to a canonical movement track table
 #'
 #' `as_track()` converts a data.frame/tibble to a validated `track_tbl` with

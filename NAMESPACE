@@ -2,5 +2,13 @@
 
 S3method(as_track,data.frame)
 S3method(print,track_tbl)
+export(add_fix_id)
 export(as_track)
+export(detect_proximity_events)
 export(is_track_tbl)
+export(match_animal_vessels)
+export(timegap_segments)
+import(data.table)
+importFrom(geosphere,distGeo)
+importFrom(tibble,as_tibble)
+importFrom(tibble,tibble)

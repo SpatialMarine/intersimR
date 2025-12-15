@@ -1,5 +1,3 @@
-# R/track-class.R
-
 # Internal constructor -----------------------------------------------------
 
 new_track_tbl <- function(x, tz = "UTC", crs = "OGC:CRS84") {
