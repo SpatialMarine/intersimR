@@ -9,6 +9,7 @@
 ## usethis namespace: start
 #' @import data.table
 #' @importFrom geosphere distGeo
+#' @importFrom terra rast rasterize extract project as.int ifel
 #' @importFrom tibble as_tibble tibble
 ## usethis namespace: end
 NULL

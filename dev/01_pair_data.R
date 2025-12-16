@@ -75,3 +75,30 @@ association_data <- association$data
 association_events <- association$events
 
 
+# create ocean mask
+library(rnaturalearth)
+library(sf)
+library(terra)
+
+# import land polygon
+land_sf <- ne_download(
+  scale = 10,          # 10, 50, or 110
+  type = "land",
+  category = "physical",
+  returnclass = "sf"
+)
+
+# create ocean mask
+mask <- create_oceanmask(
+  bbox = c(-6, 16, 34.5, 45),
+  res = 0.01,
+  polygon = land_sf,
+  polygon_type = "land"
+)
+
+# plot mask
+plot(mask)
+
+
+# create point.check function
+point_check <- make_point_check(mask, outside = "land")

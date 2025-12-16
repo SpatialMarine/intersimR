@@ -18,6 +18,7 @@ Imports:
     data.table,
     geosphere,
     rlang,
+    terra,
     tibble
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
