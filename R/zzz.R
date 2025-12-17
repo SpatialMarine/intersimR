@@ -6,5 +6,7 @@ utils::globalVariables(c(
   "dt_min","dist_m","matchID","seg","nloc","start","end",
   "duration_min","dist_min","eventID",
   # data.table pronouns
-  ".N",".SD"
+  ":=", ".N",".SD",
+  # foreach
+  "s"
 ))

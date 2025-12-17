@@ -4,18 +4,14 @@
 \alias{make_point_check}
 \title{Create a point.check function for availability::surrogateAR()}
 \usage{
-make_point_check(oceanmask, outside = c("land", "sea"))
+make_point_check(oceanmask)
 }
 \arguments{
-\item{oceanmask}{A terra::SpatRaster with values 0=ocean, 1=land.}
-
-\item{outside}{How to treat points outside the mask extent or returning NA.
-One of c("land","sea"). Default "land" (conservative; matches your current logic).}
+\item{oceanmask}{terra::SpatRaster with values 0=ocean, 1=land}
 }
 \value{
-A function(tm, pt) -> logical, TRUE if the point is at sea.
+function(tm, pt) -> logical (TRUE if at sea)
 }
 \description{
-Returns a function with signature function(tm, pt) that evaluates whether a
-candidate point is valid (at sea) using a 0/1 oceanmask.
+Create a point.check function for availability::surrogateAR()
 }

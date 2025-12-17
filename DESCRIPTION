@@ -15,9 +15,15 @@ Description: Provides tools to detect and quantify local interaction
 License: MIT + file LICENSE
 URL: https://spatialmarine.github.io/intersimR/
 Imports: 
+    availability,
     data.table,
+    doParallel,
+    foreach,
     geosphere,
+    parallel,
     rlang,
+    stats,
+    stringr,
     terra,
     tibble
 Encoding: UTF-8

@@ -89,7 +89,7 @@ land_sf <- ne_download(
 )
 
 # create ocean mask
-mask <- create_oceanmask(
+oceanmask <- create_oceanmask(
   bbox = c(-6, 16, 34.5, 45),
   res = 0.01,
   polygon = land_sf,
@@ -97,8 +97,29 @@ mask <- create_oceanmask(
 )
 
 # plot mask
-plot(mask)
+plot(oceanmask)
 
 
-# create point.check function
-point_check <- make_point_check(mask, outside = "land")
+# simulate tracks
+library(parallel)
+library(doParallel)
+library(foreach)
+
+sim_bird <- simulate_tracks(
+  animal = bird_trk,
+  sim_n = 100L,
+  oceanmask = oceanmask,
+  min_locs = 6L,
+  anchor = "start",
+  cores = 10L,
+  seed = 42)
+
+# plot simulations
+p <- ggplot() +
+  geom_path(data=sim_bird, aes(x=lon, y=lat, group=simID), color="grey", size=1, alpha = 0.3)
+
+
+
+
+
+

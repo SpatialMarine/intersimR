@@ -7,9 +7,14 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @import data.table
 #' @importFrom geosphere distGeo
-#' @importFrom terra rast rasterize extract project as.int ifel
-#' @importFrom tibble as_tibble tibble
+#' @importFrom availability surrogateARModel surrogateAR
+#' @importFrom data.table as.data.table rbindlist setkey setorder foverlaps :=
+#' @importFrom tibble tibble as_tibble
+#' @importFrom stringr str_pad
+#' @importFrom stats approx
+#' @importFrom terra rast rasterize extract wrap unwrap project as.int ifel vect
+#' @importFrom foreach %dopar% foreach
+#' @import parallel
 ## usethis namespace: end
 NULL
