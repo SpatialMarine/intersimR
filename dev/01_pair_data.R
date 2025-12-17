@@ -119,7 +119,19 @@ p <- ggplot() +
   geom_path(data=sim_bird, aes(x=lon, y=lat, group=simID), color="grey", size=1, alpha = 0.3)
 
 
-
+# test attraction
+test_attraction <- test_interactions(
+                    animal = bird_trk,
+                    vessel = ship_trk,
+                    dist_thr_m = 1500, # rename using same naming as detect_proximity_events(!)
+                    min_duration_min = 15,
+                    max_gap_min = 30,
+                    method = c("attract"),
+                    sim_n = 10L,
+                    oceanmask = oceanmask,
+                    cores = 10L,
+                    seed = 42,
+                    return_sim_metrics = TRUE)
 
 
 

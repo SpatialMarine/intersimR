@@ -22,6 +22,19 @@ simulate_tracks <- function(animal,
                             cores = 1L,
                             seed = NULL) {
 
+  # ---- dependency guard ---------------------------------------------------
+  if (!requireNamespace("availability", quietly = TRUE)) {
+    stop(
+      "Package 'availability' is required for simulate_tracks().\n",
+      "Install it with:\n",
+      "  remotes::install_github('AustralianAntarcticDataCentre/availability')",
+      call. = FALSE
+    )
+  }
+  # ------------------------------------------------------------------------
+
+
+
   anchor  <- match.arg(anchor)
 
   stopifnot(inherits(animal, "track_tbl"))
