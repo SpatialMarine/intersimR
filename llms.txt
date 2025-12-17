@@ -90,6 +90,8 @@ file will be added when a formal reference is available.
   thresholds
 - [`print(`*`<track_tbl>`*`)`](https://spatialmarine.github.io/intersimR/reference/print.track_tbl.md)
   : Print method for track tables
+- [`simulate_tracks()`](https://spatialmarine.github.io/intersimR/reference/simulate_tracks.md)
+  : Simulate surrogate tracks for an animal segment
 - [`timegap_segments()`](https://spatialmarine.github.io/intersimR/reference/timegap_segments.md)
   : Segment a sorted time series by a maximum gap (in minutes)
 
