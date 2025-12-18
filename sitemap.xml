@@ -8,6 +8,7 @@
 <url><loc>https://spatialmarine.github.io/intersimR/reference/as_track.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/create_oceanmask.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/detect_proximity_events.html</loc></url>
+<url><loc>https://spatialmarine.github.io/intersimR/reference/extract_event_segments.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/index.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/intersimR-package.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/is_track_tbl.html</loc></url>
@@ -15,6 +16,7 @@
 <url><loc>https://spatialmarine.github.io/intersimR/reference/match_animal_vessels.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/print.track_tbl.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/simulate_tracks.html</loc></url>
+<url><loc>https://spatialmarine.github.io/intersimR/reference/test_interactions.html</loc></url>
 <url><loc>https://spatialmarine.github.io/intersimR/reference/timegap_segments.html</loc></url>
 </urlset>
 

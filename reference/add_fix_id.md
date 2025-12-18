@@ -1,6 +1,7 @@
-# Add a per-animal sequential fix identifier
+# Add a per-track sequential fix index and a globally-unique fix identifier
 
-Add a per-animal sequential fix identifier
+Add a per-track sequential fix index and a globally-unique fix
+identifier
 
 ## Usage
 
@@ -21,5 +22,9 @@ add_fix_id(x, overwrite = FALSE)
 
 ## Value
 
-The same `track_tbl` with an integer column `fixID`: 1, 2, 3, ... within
-each `id`, ordered by `time` (ties broken by `lon`, `lat`).
+The same `track_tbl` with:
+
+- `fixN`: integer 1,2,3,... within each `id` ordered by time (ties by
+  lon/lat)
+
+- `fixID`: character unique identifier `paste(id, fixN, sep = "_")`
