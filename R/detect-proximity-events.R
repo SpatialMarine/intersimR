@@ -29,7 +29,9 @@ detect_proximity_events <- function(pairs,
   cand <- DT[dist_m <= min_dist_m]
   if (nrow(cand) == 0L) {
     # Return input with eventID = NA and empty events table
-    out_data <- tibble::as_tibble(DT)[, c(names(DT), "eventID")]; out_data$eventID <- NA_character_
+    out_data <- tibble::as_tibble(DT)
+    out_data$eventID <- NA_character_
+
     out_events <- tibble::tibble(matchID=character(), eventID=character(),
                                  animalID=character(), vesselID=character(),
                                  nloc=integer(), start=as.POSIXct(character()),
@@ -55,7 +57,9 @@ detect_proximity_events <- function(pairs,
 
   ev <- ev[duration_min >= min_duration_min & dist_min <= min_dist_m]
   if (nrow(ev) == 0L) {
-    out_data <- tibble::as_tibble(DT)[, c(names(DT), "eventID")]; out_data$eventID <- NA_character_
+    out_data <- tibble::as_tibble(DT)
+    out_data$eventID <- NA_character_
+
     out_events <- tibble::tibble(matchID = character(), eventID = character(),
                                  animalID = character(), vesselID = character(),
                                  nloc = integer(), start = as.POSIXct(character()),

@@ -123,6 +123,7 @@ simulate_tracks <- function(animal,
       tibble::tibble(
         animalID = animalID,
         simID = stringr::str_pad(s, width = pad_w, pad = "0"),
+        id = paste(animalID, simID, sep = "_"),
         time  = as.POSIXct(simu$ts, origin = "1970-01-01", tz = attr(tr$time, "tzone")),
         lon   = simu$xs[, 1],
         lat   = simu$xs[, 2]

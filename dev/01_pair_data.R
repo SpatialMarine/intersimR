@@ -75,6 +75,17 @@ association_data <- association$data
 association_events <- association$events
 
 
+
+# extract segments to test attraction
+event_seg <- extract_event_segments(x = association,
+                                         eventID = association$events$eventID[1],
+                                         lead_secs = 1800L,
+                                         lag_secs  = 0L)
+
+
+
+
+
 # create ocean mask
 library(rnaturalearth)
 library(sf)
@@ -106,7 +117,7 @@ library(doParallel)
 library(foreach)
 
 sim_bird <- simulate_tracks(
-  animal = bird_trk,
+  animal = event_seg$animal,
   sim_n = 100L,
   oceanmask = oceanmask,
   min_locs = 6L,
@@ -116,22 +127,57 @@ sim_bird <- simulate_tracks(
 
 # plot simulations
 p <- ggplot() +
-  geom_path(data=sim_bird, aes(x=lon, y=lat, group=simID), color="grey", size=1, alpha = 0.3)
+  geom_path(data=sim_bird, aes(x=lon, y=lat, group=simID), color="grey", linewidth=1, alpha = 0.3)
 
 
 # test attraction
 test_attraction <- test_interactions(
-                    animal = bird_trk,
-                    vessel = ship_trk,
-                    dist_thr_m = 1500, # rename using same naming as detect_proximity_events(!)
+                    animal = event_seg$animal,
+                    vessel = event_seg$vessel,
+                    obs_duration_min = NULL,
+                    min_dist_m = 1500, # rename using same naming as detect_proximity_events(!)
                     min_duration_min = 15,
                     max_gap_min = 30,
                     method = c("attract"),
                     sim_n = 10L,
                     oceanmask = oceanmask,
+                    anchor = "start",
+                    min_locs = 6L,
                     cores = 10L,
                     seed = 42,
-                    return_sim_metrics = TRUE)
+                    return_simdata = TRUE)
 
+
+
+
+## Test follow
+
+# extract segments to test attraction
+follow_seg <- extract_event_segments(x = association,
+                                    eventID = association$events$eventID[1],
+                                    lead_secs = 0L,
+                                    lag_secs  = 0L)
+
+# test attraction
+test_follow <- test_interactions(
+                      animal = follow_seg$animal,
+                      vessel = follow_seg$vessel,
+                      obs_duration_min = follow_seg$meta$duration_min,
+                      min_dist_m = 1500, # rename using same naming as detect_proximity_events(!)
+                      min_duration_min = 15,
+                      max_gap_min = 30,
+                      method = c("follow"),
+                      sim_n = 100L,
+                      oceanmask = oceanmask,
+                      anchor = "start",
+                      min_locs = 6L,
+                      cores = 10L,
+                      seed = 42,
+                      return_simdata = TRUE)
+
+
+# plot simulations
+p <- ggplot() +
+  geom_path(data=test_follow$sim_pairs, aes(x=animal_lon, y=animal_lat, group=animalID), color="grey", linewidth=1, alpha = 0.3)
 
 

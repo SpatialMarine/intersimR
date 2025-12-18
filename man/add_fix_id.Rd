@@ -2,7 +2,7 @@
 % Please edit documentation in R/add-fix-id.R
 \name{add_fix_id}
 \alias{add_fix_id}
-\title{Add a per-animal sequential fix identifier}
+\title{Add a per-track sequential fix index and a globally-unique fix identifier}
 \usage{
 add_fix_id(x, overwrite = FALSE)
 }
@@ -13,9 +13,12 @@ add_fix_id(x, overwrite = FALSE)
 an error is thrown to avoid accidental reassignment. Set \code{TRUE} to recompute.}
 }
 \value{
-The same \code{track_tbl} with an integer column \code{fixID}:
-1, 2, 3, ... within each \code{id}, ordered by \code{time} (ties broken by \code{lon}, \code{lat}).
+The same \code{track_tbl} with:
+\itemize{
+\item \code{fixN}: integer 1,2,3,... within each \code{id} ordered by time (ties by lon/lat)
+\item \code{fixID}: character unique identifier \code{paste(id, fixN, sep = "_")}
+}
 }
 \description{
-Add a per-animal sequential fix identifier
+Add a per-track sequential fix index and a globally-unique fix identifier
 }
