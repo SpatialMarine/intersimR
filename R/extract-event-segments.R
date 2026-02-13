@@ -71,8 +71,10 @@ extract_event_segments <- function(x,
   window_end   <- ev$end   + lag_secs
 
   # ---- slice paired data on animal_time ----
-  seg_pairs <- pairs[pairs$animal_time >= window_start &
-                       pairs$animal_time <= window_end, , drop = FALSE]
+  seg_pairs <- pairs[pairs$animalID == ev$animalID &
+                    pairs$vesselID == ev$vesselID &
+                    pairs$animal_time >= window_start &
+                    pairs$animal_time <= window_end, , drop = FALSE]
 
   if (nrow(seg_pairs) == 0L) {
     stop("No paired fixes found within window for eventID: ", eventID, call. = FALSE)
