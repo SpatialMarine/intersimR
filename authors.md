@@ -7,14 +7,14 @@
 
 ## Citation
 
-March D (2025). *intersimR: Simulation-Based Framework to Detect
+March D (2026). *intersimR: Simulation-Based Framework to Detect
 Animal–Vessel Interactions*. R package version 0.0.0.9000,
 <https://spatialmarine.github.io/intersimR/>.
 
     @Manual{,
       title = {intersimR: Simulation-Based Framework to Detect Animal–Vessel Interactions},
       author = {David March},
-      year = {2025},
+      year = {2026},
       note = {R package version 0.0.0.9000},
       url = {https://spatialmarine.github.io/intersimR/},
     }
