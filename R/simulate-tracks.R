@@ -87,6 +87,21 @@ simulate_tracks <- function(animal,
     availability::surrogateARModel(tr[, c("lon", "lat")]),
     error = function(e) NULL
   )
+
+  used_jitter <- FALSE
+
+  # if surrogateARModel fails, add small jitter and try again
+  if (is.null(arfit)) {
+    tr_jitter <- add_small_jitter(tr[, c("lon", "lat")], seed = seed)
+
+    arfit <- tryCatch(
+      availability::surrogateARModel(tr_jitter),
+      error = function(e) NULL
+    )
+
+    used_jitter <- !is.null(arfit)
+  }
+
   if (is.null(arfit)) return(.empty_out(animalID))
 
   fixed_vec <- switch(
