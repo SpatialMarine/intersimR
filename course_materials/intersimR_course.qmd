@@ -1,6 +1,6 @@
 ---
-title: "Simulation-based analysis of animal–vessel interactions with intersimR"
-subtitle: "Worked example for a single animal–vessel pair"
+title: "Simulation-based analysis of animal-vessel interactions with intersimR"
+subtitle: "REDUCE Workshop 2026"
 author: 
   - name: Dr. David March
     orcid: 0000-0002-6118-761X
@@ -13,15 +13,9 @@ execute:
   warning: false
   message: false
 format:
-  pdf:
-    number-sections: true
-    toc: false
-    papersize: a4
-    geometry:
-      - margin=2.5cm
-    fig-pos: "H"
-header-includes: |
-  \usepackage{float}
+  html:
+    toc: true
+    toc-depth: 3
 ---
 
 # Course objectives
@@ -40,25 +34,31 @@ By the end of the session, participants should be able to:
 
 The session prioritizes a simple, reproducible worked example. Rather than aiming to cover all possible analytical configurations, the focus is on understanding the logic of the method and the structure of the workflow. More advanced applications, including batch processing across multiple animals and vessels, sensitivity analyses, and integration into larger ecological studies, are introduced conceptually through the accompanying slides.
 
-# Seteup
+# Setup
 
 ## Install intersimR
 
 The `intersimR` package is currently installed from GitHub. GitHub installation requires the `remotes` package, which allows R to install packages that are not yet available from CRAN.
 
 ```{r}
+#| eval: false
+
 install.packages("remotes")
 ```
 
 Once `remotes` is installed, `intersimR` can be installed using:
 
 ```{r}
+#| eval: false
+
 remotes::install_github("SpatialMarine/intersimR")
 ```
 
 If installation fails with `HTTP error 401: Bad credentials`, R is probably using an invalid GitHub token. Run:
 
 ```{r}
+#| eval: false
+
 Sys.unsetenv("GITHUB_TOKEN")
 remotes::install_github("SpatialMarine/intersimR")
 ```
@@ -73,7 +73,15 @@ packageVersion("intersimR")
 
 ## Loading packages
 
-Load the packages required for the session. In addition to `intersimR`, we will use `terra` and `sf` for spatial data handling, `ggplot2` for plotting, `rnaturalearth` for basemap data, and `gganimate` for creating animations.
+Load the packages required for the session. In addition to `intersimR`, we will use:
+
+- `terra` and `sf` for spatial data handling;
+- `ggplot2` for visualization;
+- `rnaturalearth` for land polygon data;
+- `tidyterra` for plotting raster objects with `ggplot2`;
+- `gganimate` and `gifsky` for animated trajectory visualizations;
+- `readr` for importing example datasets.
+
 
 ```{r}
 # Load packages
@@ -83,7 +91,6 @@ library(sf)
 library(ggplot2)
 library(rnaturalearth)
 library(gganimate)
-
 library(tidyterra)
 library(gifski)
 library(readr)
@@ -487,7 +494,7 @@ ggplot() +
     ),
     name = NULL
   ) +
-  coord_equal() +
+  #coord_equal() +
   labs(
     x = "Longitude",
     y = "Latitude"
@@ -578,28 +585,14 @@ sim_animal_attract <- as_track(
 )
 ```
 
-```{r}
-plot_tracks(
-  animal = attraction_seg$animal,
-  vessel = attraction_seg$vessel,
-  sim_animal = sim_animal_attract,
-  oceanmask = oceanmask,
-  p_values = c(attract = test_attraction$result$p_value),
-  type = "obs_vessel_sim",
-  animate = FALSE
-)
-```
 
-# format p values for plotting
-
-p_lab \<- .format_pvalues(p_values = test_attraction$result$p_value, digits = 3)
 
 ```{r}
-
 # format p-value for annotation
 p_lab <- paste0("p = ", format(round(test_attraction$result$p_value, 3), nsmall = 3,
                                  scientific = FALSE, trim = TRUE))
 
+# plot
 p <- ggplot() +
   # plot vessel track
   geom_path(
@@ -878,71 +871,6 @@ p <- ggplot() +
 print(p)
 ```
 
-```{r}
-
-# format p-value for annotation
-p_lab <- paste0("p = ", format(round(test_follow$result$p_value, 3), nsmall = 3,
-                                 scientific = FALSE, trim = TRUE))
-
-p <- ggplot() +
-  # plot vessel track
-  geom_path(
-    data = ship_trk,
-    aes(x = lon, y = lat, group = id, colour = "Vessel"),
-    linewidth = 0.6
-  ) +
-  geom_point(
-    data=ship_trk,
-    aes(x=lon, y=lat, group = id, colour="Vessel"),
-    size=2) +
-  # plot animal track
-  geom_path(
-    data = bird_trk,
-    aes(x = lon, y = lat, group = id, colour = "Animal"),
-    linewidth = 0.6
-  ) +
-  geom_point(
-    data=bird_trk,
-    aes(x=lon, y=lat, group = id, colour="Animal"),
-    size=2) +
-  # plot simulated tracks
-  geom_path(
-    data=sim_animal_follow,
-    aes(x=lon, y=lat, group=id, colour="Simulations"),
-    linewidth=1, alpha = 0.3) +
-  geom_point(
-    data=sim_animal_follow,
-    aes(x=lon, y=lat, group = id, colour="Simulations"),
-    size=2, alpha = 0.3) +
-  # set colours
-  scale_colour_manual(
-    values = c(
-      "Animal" = "#0072B2",
-      "Vessel" = "#E69F00",
-      "Simulations" = "grey"
-    ),
-    name = NULL
-  ) +
-  # p-value annotation
-  annotate(
-    "text",
-    x = Inf,
-    y = Inf,
-    label = p_lab,
-    hjust = 1.1,
-    vjust = 1.5,
-    size = 6
-  ) +
-  # aesthetics
-  coord_equal() +
-  labs(
-    x = "Longitude",
-    y = "Latitude"
-  ) +
-  theme_bw()
-
-print(p)
-```
 
 Animate plot:
 
