@@ -19,6 +19,7 @@ species and vessel types.
 You can install the development version of the package from GitHub:
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("spatialmarine/intersimR")
 ```
@@ -26,6 +27,7 @@ remotes::install_github("spatialmarine/intersimR")
 Once installed, load the package with:
 
 ``` r
+
 library(intersimR)
 ```
 
