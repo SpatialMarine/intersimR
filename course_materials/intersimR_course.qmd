@@ -1,0 +1,441 @@
+---
+title: "Simulation-based analysis of animal–vessel interactions with intersimR"
+subtitle: "Worked example for a single animal–vessel pair"
+author: 
+  - name: Dr. David March
+    orcid: 0000-0002-6118-761X
+    email: david.march@uv.es
+    affiliation: Spatial Marine Lab, University of Valencia
+date: 2026-05-27
+execute:
+  eval: true
+  echo: true
+  warning: false
+  message: false
+format:
+  pdf:
+    number-sections: true
+    toc: false
+    papersize: a4
+    geometry:
+      - margin=2.5cm
+    fig-pos: "H"
+header-includes: |
+  \usepackage{float}
+---
+
+# Course objectives
+
+This practical session introduces a simulation-based framework to quantify and interpret animal–vessel interactions using high-resolution animal tracking data and vessel trajectory data. The session is centred on the `intersimR` package, which implements tools to identify proximity events, simulate realistic alternative animal trajectories, and test whether observed interactions are more consistent with directed behavioural responses than with random co-occurrence.
+
+Participants are assumed to be familiar with the preprocessing and handling of GPS tracking data in R, including temporal formatting, coordinate systems, and basic trajectory visualization.
+
+By the end of the session, participants should be able to:
+
+-   understand the conceptual distinction between encounters, associations, attraction, and following behaviour;
+-   identify proximity-based interaction events using distance and duration thresholds;
+-   run simulation-based tests for attraction and following behaviour;
+-   interpret the resulting p-values, classifications, and diagnostic plots;
+-   understand how the workflow can be scaled from a single animal–vessel pair to larger datasets involving multiple individuals and vessels.
+
+The session prioritizes a simple, reproducible worked example. Rather than aiming to cover all possible analytical configurations, the focus is on understanding the logic of the method and the structure of the workflow. More advanced applications, including batch processing across multiple animals and vessels, sensitivity analyses, and integration into larger ecological studies, are introduced conceptually through the accompanying slides.
+
+# Seteup
+
+## Install intersimR
+
+The `intersimR` package is currently installed from GitHub. GitHub installation requires the `remotes` package, which allows R to install packages that are not yet available from CRAN.
+
+```{r}
+install.packages("remotes")
+```
+
+Once `remotes` is installed, `intersimR` can be installed using:
+
+```{r}
+remotes::install_github("SpatialMarine/intersimR")
+```
+
+If installation fails with `HTTP error 401: Bad credentials`, R is probably using an invalid GitHub token. Run:
+
+```{r}
+Sys.unsetenv("GITHUB_TOKEN")
+remotes::install_github("SpatialMarine/intersimR")
+```
+
+If the package is updated during the course, it can be reinstalled using the same command.
+
+You can also check the installation and the version of `intersimR` using:
+
+```{r}
+packageVersion("intersimR")
+```
+
+## Loading packages
+
+Load the packages required for the session. In addition to `intersimR`, we will use `terra` and `sf` for spatial data handling, `ggplot2` for plotting, `rnaturalearth` for basemap data, and `gganimate` for creating animations.
+
+```{r}
+# Load packages
+library(intersimR)
+library(terra)
+library(sf)
+library(ggplot2)
+library(rnaturalearth)
+library(gganimate)
+
+library(tidyterra)
+library(gifski)
+library(readr)
+```
+
+# Import and visualize example tracking data
+
+In this section we load a simplified animal–vessel tracking dataset. The data have already been pre-processed and formatted, so we will focus on visualizing the tracks and preparing them for the interaction analysis.
+
+```{r}
+# Load example data
+bird <- readr::read_csv("data/608_bird.csv", show_col_types = FALSE)
+ship <- readr::read_csv("data/608_ship.csv", show_col_types = FALSE)
+```
+
+## Convert data to `track_tbl` objects
+
+The `intersimR` workflow uses a common track structure for both animal and vessel trajectories. This structure requires longitude, latitude, time, and an individual identifier.
+
+```{r}
+bird_trk <- as_track(
+  bird,
+  lon = longitude,
+  lat = latitude,
+  time = time,
+  id = organismID
+)
+
+ship_trk <- as_track(
+  ship,
+  lon = longitude,
+  lat = latitude,
+  time = time,
+  id = shipID
+)
+```
+
+## Inspect the data
+
+```{r}
+dplyr::glimpse(bird_trk)
+dplyr::glimpse(ship_trk)
+```
+
+## Static visualization of animal and vessel tracks
+
+A first inspection of the trajectories helps to identify whether the animal and vessel occupied similar areas during the same time window.
+
+```{r}
+p <- ggplot() +
+  # plot vessel track
+  geom_path(
+    data = ship_trk,
+    aes(x = lon, y = lat, group = id, colour = "Vessel"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=ship_trk,
+    aes(x=lon, y=lat, group = id, colour="Vessel"),
+    size=2) +
+  # plot animal track
+  geom_path(
+    data = bird_trk,
+    aes(x = lon, y = lat, group = id, colour = "Animal"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=bird_trk,
+    aes(x=lon, y=lat, group = id, colour="Animal"),
+    size=2) +
+  # set colours
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00"
+    ),
+    name = NULL
+  ) +
+  # aesthetics
+  coord_equal() +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+
+print(p)
+```
+
+## Animated visualization (optional)
+
+The static map shows the spatial overlap between trajectories, but animal–vessel interactions are inherently spatio-temporal. An animation can help visualize whether the animal and vessel were close to each other at the same time.
+
+```{r}
+p_anim <- p +
+  labs(
+    x = "Longitude",
+    y = "Latitude",
+    title = "Time: {frame_along}"
+  ) +
+  gganimate::transition_reveal(along = time)
+
+gganimate::animate(
+  p_anim,
+  duration = 15,
+  fps = 15,
+  renderer = gganimate::gifski_renderer()  # alternative: av_renderer()
+)
+```
+
+# Matching animal and vessel positions
+
+Before identifying interaction events, animal and vessel locations need to be paired in time. The function `match_animal_vessels()` interpolates or matches vessel positions to the animal time steps, retaining only animal–vessel pairs within a broad spatial and temporal search window.
+
+This step is particularly important when working with large tracking datasets, as it substantially reduces data volume prior to the interaction analysis. There is no need to evaluate animal–vessel pairs that are clearly too far apart to realistically interact. By filtering vessel positions within a broad search radius, the workflow focuses computational effort only on potentially relevant animal–vessel pairs.
+
+Before matching animal and vessel positions, we first assign a unique identifier to every animal location using `add_fix_id()`. This creates an internal fix identifier that allows the workflow to track individual positions throughout the different processing steps and facilitates linking outputs back to the original trajectory:
+
+```{r}
+bird_trk <- add_fix_id(bird_trk)
+```
+
+The distance threshold should be large enough to capture all potential interactions, but not so large as to include many irrelevant pairs. The temporal tolerance accounts for small time mismatches between animal and vessel positions, which can arise from differences in tracking resolution or interpolation. In this example, we use a broad distance threshold of 30 km and a temporal tolerance of 5 minutes.
+
+```{r}
+matched <- match_animal_vessels(
+  animal = bird_trk,
+  vessel = ship_trk,
+  dist_thr_m = 30000,
+  time_thr_min = 5
+)
+```
+
+Exploring the resulting object shows that the original animal track has been filtered to retain only positions that had at least one vessel position within the specified distance and time thresholds. The resulting `matched` object contains paired animal and vessel positions that can be used to detect proximity events.
+
+```{r}
+dplyr::glimpse(matched)
+```
+
+# Detecting proximity events
+
+The same function, `detect_proximity_events()`, can be used to identify different types of proximity events depending on the distance and duration thresholds selected.
+
+In this workflow, we distinguish between:
+
+-   **encounters**, defined as broad-scale proximity events;
+-   **associations**, defined as close and sustained proximity events.
+
+These definitions are analytical choices and should be adapted to the study system, species, vessel type, tracking resolution, and ecological question.
+
+## Detect encounters
+
+Encounters represent broad-scale situations in which an animal and a vessel are close enough to potentially interact or perceive each other.
+
+Here, we define encounters as events in which the animal and vessel are within 30 km for at least 30 minutes. Consecutive events separated by gaps shorter than 60 minutes are merged.
+
+```{r}
+encounter <- detect_proximity_events(
+  pairs = matched,
+  min_dist_m = 30000,
+  min_duration_min = 30,
+  max_gap_min = 60
+)
+```
+
+The function `detect_proximity_events()` returns a list containing two main objects:
+
+-   `events`: a summary table describing the detected proximity events;
+-   `data`: the subset of paired animal–vessel positions belonging to those events.
+
+The `events` object contains event-level information such as: - event identifier, - start and end time, - event duration, - minimum distance between animal and vessel, - and the number of matched positions included in the event.
+
+The `data` object contains the full time series of paired positions associated with each event identifier and is later used for simulation-based analyses.
+
+```{r}
+encounter_events <- encounter$events
+encounter_data <- encounter$data
+
+head(encounter_events)
+```
+
+## Detect associations
+
+Associations represent close and sustained animal–vessel co-occurrences. These are the candidate events that will later be tested using simulations.
+
+Here, we define associations as events in which the animal and vessel are within 1.5 km for at least 15 minutes. Consecutive associations separated by gaps shorter than 30 minutes are merged.
+
+```{r}
+association <- detect_proximity_events(
+  pairs = matched,
+  min_dist_m = 1500,
+  min_duration_min = 15,
+  max_gap_min = 30
+)
+```
+
+```{r}
+association_events <- association$events
+association_data <- association$data
+```
+
+At this stage, it is useful to compare the outputs from encounters and associations.
+
+```{r}
+head(encounter_data)
+head(association_data)
+```
+
+Notice that the eventID column in association_data is only assigned to fixes that satisfy the association criteria (i.e. distance and duration thresholds defined for associations). In contrast, encounter_data includes a broader set of animal–vessel positions corresponding to the less restrictive encounter definition.
+
+This distinction is important because associations represent the subset of proximity events that will later be evaluated using simulation-based tests for attraction and following behaviour.
+
+At this stage, the detected association only indicates close spatio-temporal proximity. It does not yet demonstrate whether the animal was attracted to the vessel or whether it actively followed the vessel. These behavioural interpretations require comparison with simulated animal trajectories, which is addressed in the next section.
+
+
+
+# Create an ocean mask
+
+The simulation step generates alternative animal trajectories that represent plausible movement paths under a null model. Because the study system is marine, simulated trajectories should be constrained to remain in the ocean and avoid unrealistic movements over land.
+
+For this reason, we create an ocean mask covering the spatial extent of the animal and vessel tracks.
+
+## Set bounding box
+
+```{r}
+# Define spatial extent around both tracks
+track_bbox <- c(
+  xmin = min(c(bird_trk$lon, ship_trk$lon), na.rm = TRUE) - 0.1,
+  xmax = max(c(bird_trk$lon, ship_trk$lon), na.rm = TRUE) + 0.1,
+  ymin = min(c(bird_trk$lat, ship_trk$lat), na.rm = TRUE) - 0.1,
+  ymax = max(c(bird_trk$lat, ship_trk$lat), na.rm = TRUE) + 0.1
+)
+```
+
+```{r}
+track_bbox
+```
+
+## Download land polygons
+
+We use land polygons from Natural Earth to define areas that should be excluded from simulated marine trajectories.
+
+```{r}
+land_sf <- rnaturalearth::ne_download(
+  scale = 10,
+  type = "land",
+  category = "physical",
+  returnclass = "sf"
+)
+```
+
+## Generate the ocean mask
+
+The function `create_oceanmask()` is a helper function implemented in `intersimR` to facilitate the generation of marine masks for trajectory simulations. The function returns a raster object in which ocean cells are coded as `0` and land cells as `1`. This mask is later used to constrain simulated trajectories to marine areas and avoid unrealistic movements across land.
+
+```{r}
+oceanmask <- create_oceanmask(
+  bbox = track_bbox,
+  res = 0.001,
+  polygon = land_sf,
+  polygon_type = "land"
+)
+```
+
+```{r}
+plot(oceanmask)
+```
+
+
+In this worked example, the ocean mask is generated only for the spatial extent of a single animal–vessel pair. This approach is computationally efficient for tutorials and small analyses.
+
+However, in real applications involving many associations, repeatedly generating a mask for every event can become computationally expensive. In those situations, it is often preferable to generate a larger mask covering the entire study region and reuse it across all simulations.
+
+The spatial resolution of the mask should also be adapted to the study system. Coastal environments with complex shorelines may require finer resolutions, whereas pelagic systems can generally be represented using coarser masks with substantially lower computational cost.
+
+For example, the following code generates a single regional ocean mask for a large portion of the Western Mediterranean Sea:
+
+```{r}
+oceanmask_wmed <- create_oceanmask(
+  bbox = c(-6, 16, 34.5, 45),
+  res = 0.01,
+  polygon = land_sf,
+  polygon_type = "land"
+)
+
+plot(oceanmask_wmed)
+```
+
+## Visualize the mask with the tracking data
+
+```{r}
+ggplot() +
+  geom_spatraster(
+    data = oceanmask
+  ) +
+  geom_path(
+    data = ship_trk,
+    aes(x = lon, y = lat, colour = "Vessel"),
+    linewidth = 0.6
+  ) +
+  geom_path(
+    data = bird_trk,
+    aes(x = lon, y = lat, colour = "Animal"),
+    linewidth = 0.6
+  ) +
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00"
+    ),
+    name = NULL
+  ) +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+```
+
+At this point, the data are ready for simulation-based testing. In the next section, we will extract one association event and test whether the observed animal movement is consistent with attraction towards the vessel.
+
+
+
+
+
+
+
+
+
+
+
+
+9.  Create an ocean mask
+
+10. Test attraction
+
+11. Visualise attraction simulations
+
+12. Test following
+
+13. Visualise following simulations
+
+14. Classify the event
+
+15. Scaling up: from one pair to multiple animals and vessels
+
+Use this as a short conceptual section based on 02_multiple_vessels.R, not as a full practical exercise.
+
+Include pseudo-code:
+
+bird_ids \<- unique(bird_trk\$id)
+
+for (i in seq_along(bird_ids)) { bird_i \<- bird_trk \|\> filter(id == bird_ids\[i\]) matched \<- match_animal_vessels(...) associations \<- detect_proximity_events(...)
+
+for (j in seq_len(nrow(associations\$events))) { test attraction test following store p-values } }

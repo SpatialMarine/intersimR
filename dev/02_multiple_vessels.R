@@ -125,7 +125,7 @@ for(i in 1:length(bird_ids)){
   # detect association events
   association <- detect_proximity_events(
     pairs = matched,
-    min_dist_m = 5000,
+    min_dist_m = 1500,
     min_duration_min = 15,
     max_gap_min = 30
   )
@@ -162,7 +162,7 @@ for(i in 1:length(bird_ids)){
           animal = event_seg$animal,
           vessel = event_seg$vessel,
           obs_duration_min = NULL,
-          min_dist_m = 5000,
+          min_dist_m = 1500,
           min_duration_min = 15,
           max_gap_min = 30,
           method = "attract",
@@ -202,7 +202,7 @@ for(i in 1:length(bird_ids)){
           animal = follow_seg$animal,
           vessel = follow_seg$vessel,
           obs_duration_min = follow_seg$meta$duration_min,
-          min_dist_m = 5000,
+          min_dist_m = 1500,
           min_duration_min = 15,
           max_gap_min = 30,
           method = "follow",

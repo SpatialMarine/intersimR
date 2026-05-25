@@ -3,8 +3,8 @@
 devtools::load_all()
 
 # import track data
-bird <- readr::read_csv("dev/data/608_bird.csv", show_col_types = FALSE)
-ship <- readr::read_csv("dev/data/608_ship.csv", show_col_types = FALSE)
+bird <- readr::read_csv("dev/data/339_bird.csv", show_col_types = FALSE)
+ship <- readr::read_csv("dev/data/339_ship.csv", show_col_types = FALSE)
 
 # convert to track_tbl class
 bird_trk <- as_track(bird,
