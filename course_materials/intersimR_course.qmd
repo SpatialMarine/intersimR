@@ -298,8 +298,6 @@ This distinction is important because associations represent the subset of proxi
 
 At this stage, the detected association only indicates close spatio-temporal proximity. It does not yet demonstrate whether the animal was attracted to the vessel or whether it actively followed the vessel. These behavioural interpretations require comparison with simulated animal trajectories, which is addressed in the next section.
 
-
-
 # Create an ocean mask
 
 The simulation step generates alternative animal trajectories that represent plausible movement paths under a null model. Because the study system is marine, simulated trajectories should be constrained to remain in the ocean and avoid unrealistic movements over land.
@@ -351,7 +349,6 @@ oceanmask <- create_oceanmask(
 ```{r}
 plot(oceanmask)
 ```
-
 
 In this worked example, the ocean mask is generated only for the spatial extent of a single animal–vessel pair. This approach is computationally efficient for tutorials and small analyses.
 
@@ -405,37 +402,606 @@ ggplot() +
 
 At this point, the data are ready for simulation-based testing. In the next section, we will extract one association event and test whether the observed animal movement is consistent with attraction towards the vessel.
 
+# Attraction analysis
+
+The attraction analysis evaluates whether the animal moved towards the vessel more directly than expected under random movement.
+
+The rationale of the test is illustrated below:
+
+1.  the observed animal trajectory prior to the association is extracted;
+2.  alternative trajectories are simulated using the movement characteristics of the observed track;
+3.  the observed trajectory is compared against the simulated trajectories;
+4.  if the observed animal reaches the vessel more consistently than expected under the simulations, the interaction is classified as significant for attraction.
+
+Importantly, attraction is evaluated *before* the association starts. Therefore, the extracted trajectory segment must include a temporal window preceding the association event.
+
+## Select an association event
+
+First, inspect the detected association events.
+
+```{r}
+association_events
+```
+
+For this example, we will analyse the first detected association.
+
+```{r}
+event_id <- association_events$eventID[1]
+
+event_id
+```
+
+## Extract the trajectory segment
+
+The function `extract_event_segments()` extracts the animal and vessel trajectories associated with the selected event.
+
+For the attraction analysis, we include a temporal window preceding the association onset. In this example, we extract the 30 minutes before the association starts.
+
+```{r}
+attraction_seg <- extract_event_segments(
+  x = association,
+  eventID = event_id,
+  lead_secs = 1800,
+  lag_secs = 0
+)
+```
+
+The extracted object contains a list of three elements:
+
+-   the animal trajectory segment;
+-   the vessel trajectory segment;
+-   metadata describing the event.
+
+```{r}
+attraction_seg$meta
+```
+
+## Visualize the extracted trajectories
+
+```{r}
+ggplot() +
+  geom_path(
+    data = attraction_seg$vessel,
+    aes(x = lon, y = lat, colour = "Vessel"),
+    linewidth = 0.8
+  ) +
+  geom_path(
+    data = attraction_seg$animal,
+    aes(x = lon, y = lat, colour = "Animal"),
+    linewidth = 0.8
+  ) +
+  geom_point(
+    data = attraction_seg$vessel,
+    aes(x = lon, y = lat, colour = "Vessel"),
+    size = 2
+  ) +
+  geom_point(
+    data = attraction_seg$animal,
+    aes(x = lon, y = lat, colour = "Animal"),
+    size = 2
+  ) +
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00"
+    ),
+    name = NULL
+  ) +
+  coord_equal() +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+```
+
+The extracted segment represents the observed movement leading to the association event and will be used in the next step to generate simulated trajectories under the null movement model.
+
+# Running the attraction test
+
+The attraction test compares the observed animal trajectory against simulated trajectories generated under a null movement model.
+
+The simulations preserve key movement characteristics of the observed trajectory, including autocorrelation and directional persistence, while randomizing the spatial path. The observed trajectory is then compared against these simulated alternatives to evaluate whether the animal approached the vessel more directly than expected under random movement.
+
+## Run the simulations
+
+The function `test_interactions()` performs the simulation-based test.
+
+In this example:
+
+-   `method = "attract"` specifies that we are testing attraction behaviour;
+-   `sim_n = 100` generates 100 simulated trajectories;
+-   `oceanmask` constrains simulations to marine areas;
+-   `anchor = "start"` initializes simulations from the observed starting position.
+-   `min_locs = 6` defines the minimum number of locations required to fit the movement model and run the simulations;
+-   `cores = 2` allows simulations to run in parallel using two processor cores, reducing computation time;
+-   `seed = 123` fixes the random number generator seed to ensure reproducibility of the simulations;
+-   `return_simdata = TRUE` stores the simulated trajectories in the output object, allowing later visualization and diagnostic analyses.
+
+```{r}
+test_attraction <- test_interactions(
+  animal = attraction_seg$animal,
+  vessel = attraction_seg$vessel,
+  obs_duration_min = NULL,
+  min_dist_m = 1500,
+  min_duration_min = 15,
+  max_gap_min = 30,
+  method = "attract",
+  sim_n = 100,
+  oceanmask = oceanmask,
+  anchor = "start",
+  min_locs = 6,
+  cores = 2,
+  seed = 42,
+  return_simdata = TRUE
+)
+```
+
+Depending on the number of simulations and trajectory length, this step may take several seconds.
+
+## Inspect the output
+
+```{r}
+names(test_attraction)
+```
+
+The output contains different listed elements, including:
+
+-   `result`: summary statistics and p-values;
+-   `meta`: metadata describing the simulation settings;
+-   `sim_pairs`: simulated animal–vessel paired positions;
+-   `sim_events`: summary of the proximity events detected in the simulated trajectories.
+
+```{r}
+test_attraction$result
+```
+
+## Interpreting the attraction test
+
+The attraction test evaluates whether the observed animal trajectory approached the vessel more strongly than expected under the simulated trajectories.
+
+A low p-value (p \< 0.05) indicates that the observed trajectory is unlikely to result from random movement alone and is therefore considered significant for attraction behaviour.
+
+In contrast, non-significant results indicate that the observed approach could plausibly arise from the movement structure of the trajectory itself without requiring directed attraction towards the vessel.
+
+## Visualize simulated trajectories
+
+The simulated trajectories can be compared against the observed trajectory to better understand the test.
+
+```{r}
+sim_animal_attract <- as_track(
+  test_attraction$sim_pairs,
+  lon = animal_lon,
+  lat = animal_lat,
+  time = animal_time,
+  id = matchID
+)
+```
+
+```{r}
+plot_tracks(
+  animal = attraction_seg$animal,
+  vessel = attraction_seg$vessel,
+  sim_animal = sim_animal_attract,
+  oceanmask = oceanmask,
+  p_values = c(attract = test_attraction$result$p_value),
+  type = "obs_vessel_sim",
+  animate = FALSE
+)
+```
+
+# format p values for plotting
+
+p_lab \<- .format_pvalues(p_values = test_attraction$result$p_value, digits = 3)
+
+```{r}
+
+# format p-value for annotation
+p_lab <- paste0("p = ", format(round(test_attraction$result$p_value, 3), nsmall = 3,
+                                 scientific = FALSE, trim = TRUE))
+
+p <- ggplot() +
+  # plot vessel track
+  geom_path(
+    data = ship_trk,
+    aes(x = lon, y = lat, group = id, colour = "Vessel"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=ship_trk,
+    aes(x=lon, y=lat, group = id, colour="Vessel"),
+    size=2) +
+  # plot animal track
+  geom_path(
+    data = bird_trk,
+    aes(x = lon, y = lat, group = id, colour = "Animal"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=bird_trk,
+    aes(x=lon, y=lat, group = id, colour="Animal"),
+    size=2) +
+  # plot simulated tracks
+  geom_path(
+    data=sim_animal_attract,
+    aes(x=lon, y=lat, group=id, colour="Simulations"),
+    linewidth=1, alpha = 0.3) +
+  geom_point(
+    data=sim_animal_attract,
+    aes(x=lon, y=lat, group = id, colour="Simulations"),
+    size=2, alpha = 0.3) +
+  # set colours
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00",
+      "Simulations" = "grey"
+    ),
+    name = NULL
+  ) +
+  # p-value annotation
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    label = p_lab,
+    hjust = 1.1,
+    vjust = 1.5,
+    size = 6
+  ) +
+  # aesthetics
+  coord_equal() +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+
+print(p)
+```
+
+Animate plot:
+
+```{r}
+p_anim <- p +
+  labs(
+    x = "Longitude",
+    y = "Latitude",
+    title = "Time: {frame_along}"
+  ) +
+  gganimate::transition_reveal(along = time)
+
+gganimate::animate(
+  p_anim,
+  duration = 15,
+  fps = 15,
+  renderer = gganimate::gifski_renderer()  # alternative: av_renderer()
+)
+```
+
+The observed animal trajectory is shown together with the simulated alternative trajectories. If the observed trajectory consistently approaches the vessel more directly than the simulations, this provides evidence supporting attraction behaviour.
+
+# Following analysis
+
+The following test evaluates whether the animal maintained proximity to the vessel longer than expected under random movement once the association had already been established.
+
+In contrast to the attraction analysis, the following test focuses on the persistence of the association rather than on the approach towards the vessel.
+
+The rationale of the test is illustrated below:
+
+1.  the observed trajectory during the association event is extracted;
+2.  alternative trajectories are simulated starting from the association onset;
+3.  simulated proximity durations are compared against the observed association duration;
+4.  if the observed association persists longer than expected under the simulations, the interaction is classified as significant for following behaviour.
+
+## Extract the trajectory segment
+
+For the following analysis, only the observed association event itself is extracted.
+
+```{r}
+follow_seg <- extract_event_segments(
+  x = association,
+  eventID = event_id,
+  lead_secs = 0,
+  lag_secs = 0
+)
+```
+
+```{r}
+names(follow_seg)
+```
+
+```{r}
+follow_seg$meta
+```
+
+## Visualize the extracted trajectories
+
+```{r}
+ggplot() +
+  geom_path(
+    data = follow_seg$vessel,
+    aes(x = lon, y = lat, colour = "Vessel"),
+    linewidth = 0.8
+  ) +
+  geom_path(
+    data = follow_seg$animal,
+    aes(x = lon, y = lat, colour = "Animal"),
+    linewidth = 0.8
+  ) +
+  geom_point(
+    data = follow_seg$vessel,
+    aes(x = lon, y = lat),
+    colour = "#E69F00",
+    size = 2
+  ) +
+  geom_point(
+    data = follow_seg$animal,
+    aes(x = lon, y = lat),
+    colour = "#0072B2",
+    size = 2
+  ) +
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00"
+    ),
+    name = NULL
+  ) +
+  coord_equal() +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+```
+
+## Run the following test
+
+For the following analysis:
+
+-   `method = "follow"` specifies that we are testing following behaviour;
+-   `obs_duration_min` provides the observed association duration used for comparison against the simulations.
+
+```{r}
+test_follow <- test_interactions(
+  animal = follow_seg$animal,
+  vessel = follow_seg$vessel,
+  obs_duration_min = follow_seg$meta$duration_min,
+  min_dist_m = 1500,
+  min_duration_min = 15,
+  max_gap_min = 30,
+  method = "follow",
+  sim_n = 100,
+  oceanmask = oceanmask,
+  anchor = "start",
+  min_locs = 6,
+  cores = 2,
+  seed = 123,
+  return_simdata = TRUE
+)
+```
+
+## Inspect the output
+
+```{r}
+names(test_follow)
+```
+
+```{r}
+test_follow$result
+```
+
+## Interpreting the following test
+
+The following test evaluates whether the observed association duration is longer than expected under the simulated trajectories.
+
+A low p-value indicates that the animal maintained proximity to the vessel more persistently than expected under random movement, supporting following behaviour.
+
+In contrast, non-significant results indicate that the observed association duration could plausibly arise from random movement patterns alone.
+
+## Visualize simulated trajectories
+
+```{r}
+sim_animal_follow <- as_track(
+  test_follow$sim_pairs,
+  lon = animal_lon,
+  lat = animal_lat,
+  time = animal_time,
+  id = matchID
+)
+```
+
+```{r}
+
+# format p-value for annotation
+p_lab <- paste0("p = ", format(round(test_follow$result$p_value, 3), nsmall = 3,
+                                 scientific = FALSE, trim = TRUE))
+
+p <- ggplot() +
+  # plot vessel track
+  geom_path(
+    data = ship_trk,
+    aes(x = lon, y = lat, group = id, colour = "Vessel"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=ship_trk,
+    aes(x=lon, y=lat, group = id, colour="Vessel"),
+    size=2) +
+  # plot animal track
+  geom_path(
+    data = bird_trk,
+    aes(x = lon, y = lat, group = id, colour = "Animal"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=bird_trk,
+    aes(x=lon, y=lat, group = id, colour="Animal"),
+    size=2) +
+  # plot simulated tracks
+  geom_path(
+    data=sim_animal_follow,
+    aes(x=lon, y=lat, group=id, colour="Simulations"),
+    linewidth=1, alpha = 0.3) +
+  geom_point(
+    data=sim_animal_follow,
+    aes(x=lon, y=lat, group = id, colour="Simulations"),
+    size=2, alpha = 0.3) +
+  # set colours
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00",
+      "Simulations" = "grey"
+    ),
+    name = NULL
+  ) +
+  # p-value annotation
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    label = p_lab,
+    hjust = 1.1,
+    vjust = 1.5,
+    size = 6
+  ) +
+  # aesthetics
+  coord_equal() +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+
+print(p)
+```
+
+```{r}
+
+# format p-value for annotation
+p_lab <- paste0("p = ", format(round(test_follow$result$p_value, 3), nsmall = 3,
+                                 scientific = FALSE, trim = TRUE))
+
+p <- ggplot() +
+  # plot vessel track
+  geom_path(
+    data = ship_trk,
+    aes(x = lon, y = lat, group = id, colour = "Vessel"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=ship_trk,
+    aes(x=lon, y=lat, group = id, colour="Vessel"),
+    size=2) +
+  # plot animal track
+  geom_path(
+    data = bird_trk,
+    aes(x = lon, y = lat, group = id, colour = "Animal"),
+    linewidth = 0.6
+  ) +
+  geom_point(
+    data=bird_trk,
+    aes(x=lon, y=lat, group = id, colour="Animal"),
+    size=2) +
+  # plot simulated tracks
+  geom_path(
+    data=sim_animal_follow,
+    aes(x=lon, y=lat, group=id, colour="Simulations"),
+    linewidth=1, alpha = 0.3) +
+  geom_point(
+    data=sim_animal_follow,
+    aes(x=lon, y=lat, group = id, colour="Simulations"),
+    size=2, alpha = 0.3) +
+  # set colours
+  scale_colour_manual(
+    values = c(
+      "Animal" = "#0072B2",
+      "Vessel" = "#E69F00",
+      "Simulations" = "grey"
+    ),
+    name = NULL
+  ) +
+  # p-value annotation
+  annotate(
+    "text",
+    x = Inf,
+    y = Inf,
+    label = p_lab,
+    hjust = 1.1,
+    vjust = 1.5,
+    size = 6
+  ) +
+  # aesthetics
+  coord_equal() +
+  labs(
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_bw()
+
+print(p)
+```
+
+Animate plot:
+
+```{r}
+p_anim <- p +
+  labs(
+    x = "Longitude",
+    y = "Latitude",
+    title = "Time: {frame_along}"
+  ) +
+  gganimate::transition_reveal(along = time)
+
+gganimate::animate(
+  p_anim,
+  duration = 15,
+  fps = 15,
+  renderer = gganimate::gifski_renderer()  # alternative: av_renderer()
+)
+```
+
+The observed association trajectory is shown together with the simulated alternative trajectories. If the observed association persists longer than most simulated trajectories, this supports following behaviour.
+
+The classification can be interpreted as follows:
+
+| Attraction | Following | Interpretation | Example dataset |
+|---|---|---|---|
+| `FALSE` | `FALSE` | The association is not distinguishable from random co-occurrence | |
+| `TRUE` | `FALSE` | The animal showed directed movement towards the vessel before the association | #608 |
+| `FALSE` | `TRUE` | The animal maintained proximity to the vessel longer than expected | |
+| `TRUE` | `TRUE` | The animal both approached the vessel and maintained proximity once associated | |
+
+This combined interpretation is useful because attraction and following do not necessarily occur together. An animal may approach a vessel but not remain associated with it, or it may remain close to a vessel once encountered without showing clear evidence of directed attraction beforehand.
 
 
 
+# Scaling up to multiple animals and vessels
+
+The previous sections used a single animal–vessel pair to illustrate the logic of the method. In real applications, the same workflow is usually repeated across many animals, vessels, trips, and association events.
+
+The general workflow remains the same:
+
+1. match animal and vessel positions;
+2. detect associations;
+3. extract each association event;
+4. run the attraction test;
+5. run the following test;
+6. store the outputs in a summary table.
 
 
+## Practical considerations
 
+When scaling up, several additional steps become important:
 
+- use a regional `oceanmask` reused across events;
+- store intermediate outputs to avoid losing results if the script stops;
+- use `tryCatch()` to handle events where simulations fail;
+- set seeds carefully if reproducibility is required;
+- avoid storing simulated trajectories for all events unless needed, because this can create very large objects;
+- run sensitivity analyses across different distance, duration, and gap thresholds.
 
+For large datasets, the most important change is that the workflow should be treated as a reproducible pipeline rather than as an interactive analysis.
 
-
-
-9.  Create an ocean mask
-
-10. Test attraction
-
-11. Visualise attraction simulations
-
-12. Test following
-
-13. Visualise following simulations
-
-14. Classify the event
-
-15. Scaling up: from one pair to multiple animals and vessels
-
-Use this as a short conceptual section based on 02_multiple_vessels.R, not as a full practical exercise.
-
-Include pseudo-code:
-
-bird_ids \<- unique(bird_trk\$id)
-
-for (i in seq_along(bird_ids)) { bird_i \<- bird_trk \|\> filter(id == bird_ids\[i\]) matched \<- match_animal_vessels(...) associations \<- detect_proximity_events(...)
-
-for (j in seq_len(nrow(associations\$events))) { test attraction test following store p-values } }
