@@ -180,7 +180,7 @@ p <- ggplot() +
 print(p)
 ```
 
-## Animated visualization (optional)
+## Animated visualization
 
 The static map shows the spatial overlap between trajectories, but animal–vessel interactions are inherently spatio-temporal. An animation can help visualize whether the animal and vessel were close to each other at the same time.
 
@@ -195,8 +195,8 @@ p_anim <- p +
 
 gganimate::animate(
   p_anim,
-  duration = 15,
-  fps = 15,
+  duration = 6,
+  fps = 5,
   renderer = gganimate::gifski_renderer()  # alternative: av_renderer()
 )
 ```
@@ -311,22 +311,6 @@ The simulation step generates alternative animal trajectories that represent pla
 
 For this reason, we create an ocean mask covering the spatial extent of the animal and vessel tracks.
 
-## Set bounding box
-
-```{r}
-# Define spatial extent around both tracks
-track_bbox <- c(
-  xmin = min(c(bird_trk$lon, ship_trk$lon), na.rm = TRUE) - 0.1,
-  xmax = max(c(bird_trk$lon, ship_trk$lon), na.rm = TRUE) + 0.1,
-  ymin = min(c(bird_trk$lat, ship_trk$lat), na.rm = TRUE) - 0.1,
-  ymax = max(c(bird_trk$lat, ship_trk$lat), na.rm = TRUE) + 0.1
-)
-```
-
-```{r}
-track_bbox
-```
-
 ## Download land polygons
 
 We use land polygons from Natural Earth to define areas that should be excluded from simulated marine trajectories.
@@ -344,45 +328,40 @@ land_sf <- rnaturalearth::ne_download(
 
 The function `create_oceanmask()` is a helper function implemented in `intersimR` to facilitate the generation of marine masks for trajectory simulations. The function returns a raster object in which ocean cells are coded as `0` and land cells as `1`. This mask is later used to constrain simulated trajectories to marine areas and avoid unrealistic movements across land.
 
+We will generate a larger mask covering the entire study region and reuse it across all simulations.
+
+The spatial resolution of the mask should be adapted to the study system. Coastal environments with complex shorelines may require finer resolutions, whereas pelagic systems can generally be represented using coarser masks with substantially lower computational cost.
+
+The following code generates a single regional ocean mask for a large portion of the Western Mediterranean Sea:
+
 ```{r}
 oceanmask <- create_oceanmask(
-  bbox = track_bbox,
-  res = 0.001,
-  polygon = land_sf,
-  polygon_type = "land"
-)
-```
-
-```{r}
-plot(oceanmask)
-```
-
-In this worked example, the ocean mask is generated only for the spatial extent of a single animal–vessel pair. This approach is computationally efficient for tutorials and small analyses.
-
-However, in real applications involving many associations, repeatedly generating a mask for every event can become computationally expensive. In those situations, it is often preferable to generate a larger mask covering the entire study region and reuse it across all simulations.
-
-The spatial resolution of the mask should also be adapted to the study system. Coastal environments with complex shorelines may require finer resolutions, whereas pelagic systems can generally be represented using coarser masks with substantially lower computational cost.
-
-For example, the following code generates a single regional ocean mask for a large portion of the Western Mediterranean Sea:
-
-```{r}
-oceanmask_wmed <- create_oceanmask(
   bbox = c(-6, 16, 34.5, 45),
-  res = 0.01,
+  res = 0.005,
   polygon = land_sf,
   polygon_type = "land"
 )
 
-plot(oceanmask_wmed)
+plot(oceanmask)
 ```
 
 ## Visualize the mask with the tracking data
 
 ```{r}
+
+# define plot boundaries
+buffer <- 0.1
+xlim_track <- range(c(bird_trk$lon, ship_trk$lon), na.rm = TRUE) + c(-buffer, buffer)
+ylim_track <- range(c(bird_trk$lat, ship_trk$lat), na.rm = TRUE) + c(-buffer, buffer)
+
+
 ggplot() +
   geom_spatraster(
-    data = oceanmask
+    data = as.factor(oceanmask)
   ) +
+  scale_fill_manual(
+    values = c("0" = "white", "1" = "grey10"),
+    guide = "none") +
   geom_path(
     data = ship_trk,
     aes(x = lon, y = lat, colour = "Vessel"),
@@ -400,11 +379,19 @@ ggplot() +
     ),
     name = NULL
   ) +
+  coord_sf(
+    xlim = xlim_track,
+    ylim = ylim_track,
+    expand = FALSE
+  ) +
   labs(
     x = "Longitude",
     y = "Latitude"
   ) +
-  theme_bw()
+  theme_bw() +
+  theme(
+  panel.grid = element_blank()
+)
 ```
 
 At this point, the data are ready for simulation-based testing. In the next section, we will extract one association event and test whether the observed animal movement is consistent with attraction towards the vessel.
@@ -463,46 +450,6 @@ The extracted object contains a list of three elements:
 attraction_seg$meta
 ```
 
-## Visualize the extracted trajectories
-
-```{r}
-ggplot() +
-  geom_path(
-    data = attraction_seg$vessel,
-    aes(x = lon, y = lat, colour = "Vessel"),
-    linewidth = 0.8
-  ) +
-  geom_path(
-    data = attraction_seg$animal,
-    aes(x = lon, y = lat, colour = "Animal"),
-    linewidth = 0.8
-  ) +
-  geom_point(
-    data = attraction_seg$vessel,
-    aes(x = lon, y = lat, colour = "Vessel"),
-    size = 2
-  ) +
-  geom_point(
-    data = attraction_seg$animal,
-    aes(x = lon, y = lat, colour = "Animal"),
-    size = 2
-  ) +
-  scale_colour_manual(
-    values = c(
-      "Animal" = "#0072B2",
-      "Vessel" = "#E69F00"
-    ),
-    name = NULL
-  ) +
-  #coord_equal() +
-  labs(
-    x = "Longitude",
-    y = "Latitude"
-  ) +
-  theme_bw()
-```
-
-The extracted segment represents the observed movement leading to the association event and will be used in the next step to generate simulated trajectories under the null movement model.
 
 # Running the attraction test
 
@@ -539,7 +486,7 @@ test_attraction <- test_interactions(
   anchor = "start",
   min_locs = 6,
   cores = 2,
-  seed = 42,
+  seed = 123,
   return_simdata = TRUE
 )
 ```
@@ -592,37 +539,50 @@ sim_animal_attract <- as_track(
 p_lab <- paste0("p = ", format(round(test_attraction$result$p_value, 3), nsmall = 3,
                                  scientific = FALSE, trim = TRUE))
 
+# define plot boundaries
+buffer <- 0.1
+xlim_track <- range(c(bird_trk$lon, ship_trk$lon), na.rm = TRUE) + c(-buffer, buffer)
+ylim_track <- range(c(bird_trk$lat, ship_trk$lat), na.rm = TRUE) + c(-buffer, buffer)
+
+
 # plot
 p <- ggplot() +
+  # plot landmask
+    geom_spatraster(
+    data = as.factor(oceanmask)
+  ) +
+  scale_fill_manual(
+    values = c("0" = "white", "1" = "grey10"),
+    guide = "none") +
   # plot vessel track
   geom_path(
-    data = ship_trk,
+    data = attraction_seg$vessel,
     aes(x = lon, y = lat, group = id, colour = "Vessel"),
     linewidth = 0.6
   ) +
   geom_point(
-    data=ship_trk,
+    data=attraction_seg$vessel,
     aes(x=lon, y=lat, group = id, colour="Vessel"),
     size=2) +
   # plot animal track
   geom_path(
-    data = bird_trk,
+    data = attraction_seg$animal,
     aes(x = lon, y = lat, group = id, colour = "Animal"),
     linewidth = 0.6
   ) +
   geom_point(
-    data=bird_trk,
+    data=attraction_seg$animal,
     aes(x=lon, y=lat, group = id, colour="Animal"),
     size=2) +
   # plot simulated tracks
   geom_path(
     data=sim_animal_attract,
     aes(x=lon, y=lat, group=id, colour="Simulations"),
-    linewidth=1, alpha = 0.3) +
+    linewidth=0.5, alpha = 0.3) +
   geom_point(
     data=sim_animal_attract,
     aes(x=lon, y=lat, group = id, colour="Simulations"),
-    size=2, alpha = 0.3) +
+    size=1, alpha = 0.3) +
   # set colours
   scale_colour_manual(
     values = c(
@@ -643,7 +603,11 @@ p <- ggplot() +
     size = 6
   ) +
   # aesthetics
-  coord_equal() +
+  coord_sf(
+    xlim = xlim_track,
+    ylim = ylim_track,
+    expand = FALSE
+  ) +
   labs(
     x = "Longitude",
     y = "Latitude"
@@ -666,8 +630,8 @@ p_anim <- p +
 
 gganimate::animate(
   p_anim,
-  duration = 15,
-  fps = 15,
+  duration = 6,
+  fps = 10,
   renderer = gganimate::gifski_renderer()  # alternative: av_renderer()
 )
 ```
@@ -708,46 +672,6 @@ names(follow_seg)
 follow_seg$meta
 ```
 
-## Visualize the extracted trajectories
-
-```{r}
-ggplot() +
-  geom_path(
-    data = follow_seg$vessel,
-    aes(x = lon, y = lat, colour = "Vessel"),
-    linewidth = 0.8
-  ) +
-  geom_path(
-    data = follow_seg$animal,
-    aes(x = lon, y = lat, colour = "Animal"),
-    linewidth = 0.8
-  ) +
-  geom_point(
-    data = follow_seg$vessel,
-    aes(x = lon, y = lat),
-    colour = "#E69F00",
-    size = 2
-  ) +
-  geom_point(
-    data = follow_seg$animal,
-    aes(x = lon, y = lat),
-    colour = "#0072B2",
-    size = 2
-  ) +
-  scale_colour_manual(
-    values = c(
-      "Animal" = "#0072B2",
-      "Vessel" = "#E69F00"
-    ),
-    name = NULL
-  ) +
-  coord_equal() +
-  labs(
-    x = "Longitude",
-    y = "Latitude"
-  ) +
-  theme_bw()
-```
 
 ## Run the following test
 
@@ -814,33 +738,33 @@ p_lab <- paste0("p = ", format(round(test_follow$result$p_value, 3), nsmall = 3,
 p <- ggplot() +
   # plot vessel track
   geom_path(
-    data = ship_trk,
+    data = follow_seg$vessel,
     aes(x = lon, y = lat, group = id, colour = "Vessel"),
     linewidth = 0.6
   ) +
   geom_point(
-    data=ship_trk,
+    data=follow_seg$vessel,
     aes(x=lon, y=lat, group = id, colour="Vessel"),
     size=2) +
   # plot animal track
   geom_path(
-    data = bird_trk,
+    data = follow_seg$animal,
     aes(x = lon, y = lat, group = id, colour = "Animal"),
     linewidth = 0.6
   ) +
   geom_point(
-    data=bird_trk,
+    data = follow_seg$animal,
     aes(x=lon, y=lat, group = id, colour="Animal"),
     size=2) +
   # plot simulated tracks
   geom_path(
     data=sim_animal_follow,
     aes(x=lon, y=lat, group=id, colour="Simulations"),
-    linewidth=1, alpha = 0.3) +
+    linewidth=0.5, alpha = 0.2) +
   geom_point(
     data=sim_animal_follow,
     aes(x=lon, y=lat, group = id, colour="Simulations"),
-    size=2, alpha = 0.3) +
+    size=1, alpha = 0.2) +
   # set colours
   scale_colour_manual(
     values = c(
@@ -861,7 +785,7 @@ p <- ggplot() +
     size = 6
   ) +
   # aesthetics
-  coord_equal() +
+  coord_sf(expand = FALSE) +
   labs(
     x = "Longitude",
     y = "Latitude"
@@ -885,8 +809,8 @@ p_anim <- p +
 
 gganimate::animate(
   p_anim,
-  duration = 15,
-  fps = 15,
+  duration = 6,
+  fps = 10,
   renderer = gganimate::gifski_renderer()  # alternative: av_renderer()
 )
 ```
@@ -897,10 +821,10 @@ The classification can be interpreted as follows:
 
 | Attraction | Following | Interpretation | Example dataset |
 |---|---|---|---|
-| `FALSE` | `FALSE` | The association is not distinguishable from random co-occurrence | |
+| `FALSE` | `FALSE` | The association is not distinguishable from random co-occurrence | #339 |
 | `TRUE` | `FALSE` | The animal showed directed movement towards the vessel before the association | #608 |
-| `FALSE` | `TRUE` | The animal maintained proximity to the vessel longer than expected | |
-| `TRUE` | `TRUE` | The animal both approached the vessel and maintained proximity once associated | |
+| `FALSE` | `TRUE` | The animal maintained proximity to the vessel longer than expected | #444 |
+| `TRUE` | `TRUE` | The animal both approached the vessel and maintained proximity once associated | #1500 |
 
 This combined interpretation is useful because attraction and following do not necessarily occur together. An animal may approach a vessel but not remain associated with it, or it may remain close to a vessel once encountered without showing clear evidence of directed attraction beforehand.
 
