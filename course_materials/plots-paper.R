@@ -5,6 +5,9 @@
 # one complete version for animation
 # animations without simulations
 
+
+# check plot-interactions-simu4.R!! Specially check how long tracks were tacking before and after association
+
 # Load packages
 library(intersimR)
 library(terra)
@@ -49,8 +52,8 @@ world <- world(resolution = 1, path=tempdir())
 # c: 608
 # d:1500
 
-bird <- readr::read_csv("data/273_bird.csv", show_col_types = FALSE)
-ship <- readr::read_csv("data/273_ship.csv", show_col_types = FALSE)
+bird <- readr::read_csv("course_materials/data/1500_bird.csv", show_col_types = FALSE)
+ship <- readr::read_csv("course_materials/data/1500_ship.csv", show_col_types = FALSE)
 
 
 # convert to track objects
@@ -173,9 +176,8 @@ sim_last <- sim_animal_attract %>%
 
 
 
-# plot
+# plot for article figure
 p <- ggplot() +
-
   # plot simulated tracks
   geom_path(data=sim_animal_attract, aes(x=lon, y=lat, group=id, colour="Simulations"), linewidth=0.7, alpha = 0.3) +
   geom_point(data=sim_last, aes(x=lon, y=lat, group=id, color="Simulations"), size=1, alpha = 0.3) +
@@ -201,4 +203,78 @@ p <- ggplot() +
     axis.ticks = element_blank(),
     panel.grid = element_blank()
   )
+
+
+
+# animation for movie
+
+
+# define span
+lon_span <- 500 / 2^zoom_level
+lat_span <- 180 / 2^zoom_level
+# define boundaries
+lon_bounds <- c(zoom_to[1] - lon_span / 2, zoom_to[1] + lon_span / 2)
+lat_bounds <- c(zoom_to[2] - lat_span / 2, zoom_to[2] + lat_span / 2)
+
+
+
+# plot for article figure
+p <- ggplot() +
+  # plot simulated tracks
+  geom_path(data=sim_animal_attract, aes(x=lon, y=lat, group=id, colour="Simulations"), linewidth=0.7, alpha = 0.3) +
+  geom_point(data=sim_animal_attract, aes(x=lon, y=lat, group=id, color="Simulations"), size=1, alpha = 0.3) +
+  # ship track
+  geom_path(data = attraction_seg$vessel, aes(x = lon, y = lat, group = id, colour = "Vessel"), linewidth = 1) +
+  geom_point(data=attraction_seg$vessel, aes(x=lon, y=lat, color="Vessel"), size=2) +
+  # plot animal track
+  geom_path(data = attraction_seg$animal, aes(x = lon, y = lat, group = id, colour = "Animal"), linewidth = 1) +
+  geom_point(data=attraction_seg$animal, aes(x=lon, y=lat, color="Animal"), size=2) +
+  # add land
+  geom_sf(fill="grey80", colour="grey40", size=0.2, data=world) +
+  # set colours
+  scale_colour_manual(values = c("Animal" = "#0072B2", "Vessel" = "#EFC000FF", "Simulations" = "grey70"), name = NULL) +
+  # aesthetics
+  coord_sf(xlim = lon_bounds, ylim = lat_bounds,expand = FALSE) +
+  # labs
+  labs(x = "Longitude",y = "Latitude") +
+  # scale bar
+  ggspatial::annotation_scale(location = "br", style = "ticks", width_hint = 0.3) +
+  # theme
+  theme_bw(base_size = 14) +
+  theme(legend.position = "bottom",
+        legend.text=element_text(size=14),
+        legend.title = element_blank(),
+        panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+
+
+# define animation
+p_anim <- p +
+  labs(
+    x = "Longitude",
+    y = "Latitude",
+    title = "Time: {frame_along}"
+  ) +
+  theme(
+    plot.title = element_text(
+      hjust = 1,
+      size = 14,
+      face = "plain"
+    )
+  ) +
+  gganimate::transition_reveal(along = time)
+
+
+# animate
+p_mp4 <- "course_materials/data/1500_bird.mp4"
+gganimate::animate(p_anim,
+                   duration = 6,
+                   fps = 10,
+                   width = 1920,
+                   height = 1080,
+                   res = 150,
+                   renderer = av_renderer(p_mp4))
+
+
+
+
 
